@@ -86,7 +86,8 @@
   <div class="card" style="margin-top:8px">
     <h2>Text → Sonar WAV</h2>
     <p class="muted">Type your message. Enter a passphrase to encrypt (required) and generate the WAV. Works offline.</p>
-    <textarea id="textIn" placeholder="HELLO WORLD FROM DOM">HELLO WORLD FROM DOM</textarea>
+    <textarea id="textIn" placeholder="HELLO WORLD FROM DOM" maxlength="250" aria-describedby="textInHelp">HELLO WORLD FROM DOM</textarea>
+    <p id="textInHelp" class="small">Messages are limited to 250 characters.</p>
     <div class="field" style="margin-top:10px">
       <label for="encPass" class="small">Passphrase (required)</label>
       <div class="password-field">
@@ -162,6 +163,7 @@ const GAP_DURATION = 0.01;      // seconds
 const CHIRP_SPAN = 600;         // Hz
 const F_MIN = 4000;
 const F_MAX = 12000;
+const MAX_PLAINTEXT_CHARS = 250;
 const N_SYMS = SYMBOLS.length;  // 33
 const CENTER_FREQS = Array.from({length:N_SYMS}, (_,i)=>F_MIN + (i*(F_MAX - F_MIN - CHIRP_SPAN))/(N_SYMS-1));
 const PREAMBLE = [ {f:8000,d:0.09}, {f:6000,d:0.09}, {f:10000,d:0.09}, {f:7000,d:0.09}, {f:9000,d:0.09} ];
@@ -462,10 +464,16 @@ btnEncode.addEventListener('click', async ()=>{
     return;
   }
 
+  const plaintext = textIn.value || 'HELLO WORLD';
+  if(plaintext.length > MAX_PLAINTEXT_CHARS){
+    resetGeneratedOutput();
+    showModal('Message too long—limit is 250 characters.');
+    return;
+  }
+
   btnEncode.disabled = true;
   decodedPre.textContent='';
   try{
-    const plaintext = textIn.value || 'HELLO WORLD';
     const payload = await aesEncrypt(plaintext, pass); // Base32 (A–Z,2–7)
     const audio = encodeTextToAudio(payload);
     const blob = encodeWAV(audio, SAMPLE_RATE);
