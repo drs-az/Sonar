@@ -152,9 +152,13 @@ function base32Encode(buf){
   if(bits>0){ output += B32_ALPH[(value << (5-bits)) & 31]; }
   return output; // no padding
 }
-function stripWhitespace(str){ let out=''; for(const ch of str){ if(ch!=="
-" && ch!=="
-" && ch!=="	" && ch!==" ") out+=ch; } return out; }
+function stripWhitespace(str){
+  let out = '';
+  for(const ch of str){
+    if(ch !== '\n' && ch !== '\r' && ch !== '\t' && ch !== ' ') out += ch;
+  }
+  return out;
+}
 function base32Decode(str){
   const s = stripWhitespace(str).toUpperCase();
   let bits=0, value=0; const out=[];
