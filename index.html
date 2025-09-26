@@ -278,10 +278,14 @@ btnEncode.addEventListener('click', async ()=>{
 
 btnPlay.addEventListener('click', ()=>{ if(player.src) player.play(); });
 
-fileIn.addEventListener('change', ()=>{ btnDecode.disabled = !fileIn.files?.length; decodedPre.textContent=''; });
+fileIn.addEventListener('change', ()=>{
+  const hasFiles = fileIn.files && fileIn.files.length > 0;
+  btnDecode.disabled = !hasFiles;
+  decodedPre.textContent='';
+});
 
 btnDecode.addEventListener('click', async ()=>{
-  const file = fileIn.files?.[0]; if(!file) return;
+  const file = fileIn.files && fileIn.files[0]; if(!file) return;
   btnDecode.disabled = true; decodedPre.textContent='Decoding…';
   try{
     const pass = decPass.value || '';
