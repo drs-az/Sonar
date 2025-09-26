@@ -86,6 +86,7 @@
       <button id="btnEncode" class="btn">Generate WAV</button>
       <button id="btnPlay" class="btn ghost" disabled>Play</button>
       <a id="downloadLink" class="btn ghost" download="sonar.wav" style="text-decoration:none;display:none">Download WAV</a>
+      <button id="shareLink" class="btn ghost" type="button" style="display:none">Share WAV</button>
     </div>
     <div style="height:10px"></div>
     <audio id="player" controls></audio>
@@ -329,6 +330,7 @@ const encPass = document.getElementById('encPass');
 const btnPlay = document.getElementById('btnPlay');
 const player = document.getElementById('player');
 const downloadLink = document.getElementById('downloadLink');
+const shareLink = document.getElementById('shareLink');
 const fileIn = document.getElementById('fileIn');
 const decPass = document.getElementById('decPass');
 const btnDecode = document.getElementById('btnDecode');
@@ -352,6 +354,22 @@ modal.addEventListener('click', (event)=>{ if(event.target === modal) hideModal(
 window.addEventListener('keydown', (event)=>{ if(event.key === 'Escape' && !modal.classList.contains('hidden')) hideModal(); });
 
 let currentUrl = null;
+let currentBlob = null;
+
+const SHARE_MESSAGE = 'Chirp, chirp 🐬 • Decode on Sonar at https://drs-az.github.io/Sonar/';
+
+function canShareBlob(blob){
+  if(!navigator.share) return false;
+  if(navigator.canShare){
+    try{
+      const file = new File([blob], 'sonar.wav', {type:'audio/wav'});
+      return navigator.canShare({ files: [file], text: SHARE_MESSAGE, title: 'Sonar WAV' });
+    }catch(_err){
+      return false;
+    }
+  }
+  return true;
+}
 
 btnEncode.addEventListener('click', async ()=>{
   const pass = encPass.value || '';
@@ -373,13 +391,55 @@ btnEncode.addEventListener('click', async ()=>{
     const payload = await aesEncrypt(plaintext, pass); // Base32 (A–Z,2–7)
     const audio = encodeTextToAudio(payload);
     const blob = encodeWAV(audio, SAMPLE_RATE);
-    if(currentUrl) URL.revokeObjectURL(currentUrl); currentUrl = URL.createObjectURL(blob);
-    player.src = currentUrl; btnPlay.disabled = false; downloadLink.href = currentUrl; downloadLink.style.display='inline-flex';
+    if(currentUrl) URL.revokeObjectURL(currentUrl);
+    currentUrl = URL.createObjectURL(blob);
+    currentBlob = blob;
+    player.src = currentUrl;
+    btnPlay.disabled = false;
+    downloadLink.href = currentUrl;
+    downloadLink.style.display='inline-flex';
+    if(shareLink){
+      if(canShareBlob(blob)){
+        shareLink.style.display = 'inline-flex';
+        shareLink.disabled = false;
+      }else{
+        shareLink.style.display = 'none';
+      }
+    }
   }catch(e){ showModal('Encode error: ' + (e.message||e)); }
   finally{ btnEncode.disabled = false; }
 });
 
 btnPlay.addEventListener('click', ()=>{ if(player.src) player.play(); });
+
+if(shareLink){
+  shareLink.addEventListener('click', async ()=>{
+    if(!currentBlob){
+      showModal('Generate a WAV before sharing.');
+      return;
+    }
+    if(!navigator.share){
+      showModal('Sharing is not supported on this device/browser.');
+      return;
+    }
+    try{
+      shareLink.disabled = true;
+      const file = new File([currentBlob], 'sonar.wav', {type:'audio/wav'});
+      const shareData = { title: 'Sonar WAV', text: SHARE_MESSAGE, files: [file] };
+      if(navigator.canShare && !navigator.canShare(shareData)){
+        showModal('This device cannot share WAV files.');
+      }else{
+        await navigator.share(shareData);
+      }
+    }catch(err){
+      if(err && err.name !== 'AbortError'){
+        showModal('Share failed: ' + (err.message || err));
+      }
+    }finally{
+      shareLink.disabled = false;
+    }
+  });
+}
 
 fileIn.addEventListener('change', ()=>{
   const hasFiles = fileIn.files && fileIn.files.length > 0;
