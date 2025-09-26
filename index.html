@@ -281,10 +281,15 @@ window.addEventListener('keydown', (event)=>{ if(event.key === 'Escape' && !moda
 let currentUrl = null;
 
 btnEncode.addEventListener('click', async ()=>{
-  btnEncode.disabled = true; decodedPre.textContent='';
+  const pass = encPass.value || '';
+  if(!pass) {
+    showModal('Passphrase is required to create the WAV.');
+    return;
+  }
+
+  btnEncode.disabled = true;
+  decodedPre.textContent='';
   try{
-    const pass = encPass.value || '';
-    if(!pass) { showModal('Passphrase is required to create the WAV.'); return; }
     const plaintext = textIn.value || 'HELLO WORLD';
     const payload = await aesEncrypt(plaintext, pass); // Base32 (A–Z,2–7)
     const audio = encodeTextToAudio(payload);
