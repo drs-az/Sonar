@@ -26,11 +26,6 @@
   .btn.ghost{background:#162650;border:1px solid var(--line);box-shadow:none}
   audio{width:100%}
   .small{font-size:12px;color:var(--muted)}
-  .tabs{display:flex;border-bottom:1px solid var(--line);margin-top:16px}
-  .tab{padding:10px 14px;cursor:pointer;border:1px solid var(--line);border-bottom:none;border-radius:12px 12px 0 0;background:#0f1b3e;margin-right:6px;color:#cfe0ff}
-  .tab.active{background:#192a59}
-  .panel{display:none}
-  .panel.active{display:block}
   .pill{font-size:11px;padding:3px 8px;border-radius:999px;background:#0f1b3c;border:1px solid #263469;color:#cfe0ff;margin-right:6px}
   .kbd{background:#0e1735;border:1px solid #2b3a73;border-radius:6px;padding:2px 6px;font-family:ui-monospace,Menlo,Consolas,monospace;color:#dfe7ff}
   .mono{font-family:ui-monospace,Menlo,Consolas,monospace}
@@ -53,12 +48,9 @@
       <span class="badge">120 ms symbol</span>
       <span class="badge">4–12 kHz band</span>
       <span class="badge">AES‑GCM 256 • PBKDF2‑SHA256 (required)</span>
-    </header><div class="tabs" role="tablist">
-  <button class="tab active" role="tab" aria-selected="true" aria-controls="encodePanel" id="tabEncode">Encode</button>
-  <button class="tab" role="tab" aria-selected="false" aria-controls="decodePanel" id="tabDecode">Decode</button>
-</div>
+    </header>
 
-<section id="encodePanel" class="panel active" role="tabpanel" aria-labelledby="tabEncode">
+<section id="encodeSection">
   <div class="card" style="margin-top:8px">
     <h2>Text → Sonar WAV</h2>
     <p class="muted">Type your message. Enter a passphrase to encrypt (required) and generate the WAV. Works offline.</p>
@@ -78,7 +70,7 @@
   </div>
 </section>
 
-<section id="decodePanel" class="panel" role="tabpanel" aria-labelledby="tabDecode">
+<section id="decodeSection">
   <div class="card" style="margin-top:8px">
     <h2>Audio (WAV/MP3) → Decoded Text</h2>
     <p class="muted">Upload a file produced by this encoder. <strong>Enter the same passphrase</strong> to decrypt and reveal the text.</p>
@@ -122,19 +114,7 @@ const PREAMBLE = [ {f:8000,d:0.09}, {f:6000,d:0.09}, {f:10000,d:0.09}, {f:7000,d
 const PREAMBLE_GAP = 0.06;
 
 // ===== UI =====
-const tabEncode = document.getElementById('tabEncode');
-const tabDecode = document.getElementById('tabDecode');
-const encodePanel = document.getElementById('encodePanel');
-const decodePanel = document.getElementById('decodePanel');
-function setTab(which){
-  const a = which==='encode';
-  tabEncode.classList.toggle('active', a); tabEncode.setAttribute('aria-selected', String(a));
-  tabDecode.classList.toggle('active', !a); tabDecode.setAttribute('aria-selected', String(!a));
-  encodePanel.classList.toggle('active', a); decodePanel.classList.toggle('active', !a);
-}
- tabEncode.addEventListener('click', ()=> setTab('encode'));
- tabDecode.addEventListener('click', ()=> setTab('decode'));
- document.getElementById('year').textContent = new Date().getFullYear();
+document.getElementById('year').textContent = new Date().getFullYear();
 
 // ===== Utils =====
 function hann(n){ const w=new Float32Array(n); for(let i=0;i<n;i++){ w[i]=0.5*(1-Math.cos(2*Math.PI*i/(n-1))); } return w; }
