@@ -40,10 +40,10 @@
   input[type="password"], input[type="text"]{border-radius:12px;border:1px solid var(--line);background:#0d1634;color:#eef2ff;padding:10px 12px;outline:none}
   .strength-indicator{width:100%;font-size:12px;margin-top:4px;color:var(--muted)}
   .strength-indicator strong{font-weight:600}
-  input[type="password"].strength-weak{border-color:#ff6b6b;box-shadow:0 0 0 1px #ff6b6b33 inset}
-  input[type="password"].strength-fair{border-color:#f5c542;box-shadow:0 0 0 1px #f5c54233 inset}
-  input[type="password"].strength-strong{border-color:#38d996;box-shadow:0 0 0 1px #38d99633 inset}
-  input[type="password"].strength-excellent{border-color:#38d996;box-shadow:0 0 0 1px #38d99666 inset}
+  .password-field input.strength-weak{border-color:#ff6b6b;box-shadow:0 0 0 1px #ff6b6b33 inset}
+  .password-field input.strength-fair{border-color:#f5c542;box-shadow:0 0 0 1px #f5c54233 inset}
+  .password-field input.strength-strong{border-color:#38d996;box-shadow:0 0 0 1px #38d99633 inset}
+  .password-field input.strength-excellent{border-color:#38d996;box-shadow:0 0 0 1px #38d99666 inset}
   .modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(5,10,25,0.78);backdrop-filter:blur(6px);z-index:999;padding:20px;animation:fadeIn 0.2s ease-out}
   .modal.hidden{display:none}
   .modal-content{max-width:420px;width:100%;background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 18px 40px #000a;padding:22px;display:flex;flex-direction:column;gap:16px;animation:slideUp 0.25s ease-out}
@@ -77,10 +77,11 @@
     <textarea id="textIn" placeholder="HELLO WORLD FROM DOM">HELLO WORLD FROM DOM</textarea>
     <div class="field" style="margin-top:10px">
       <label for="encPass" class="small">Passphrase (required)</label>
-
-      <input type="password" id="encPass" placeholder="Enter passphrase" autocomplete="new-password" required />
+      <div class="password-field">
+        <input type="password" id="encPass" placeholder="Enter passphrase" autocomplete="new-password" required />
+        <button id="encPassToggle" class="pass-toggle" type="button" aria-controls="encPass" aria-pressed="false" aria-label="Show passphrase">Show</button>
+      </div>
       <div id="encPassFeedback" class="strength-indicator"></div>
-
     </div>
     <div class="row" style="margin-top:12px">
       <button id="btnEncode" class="btn">Generate WAV</button>
@@ -101,10 +102,11 @@
     <input type="file" id="fileIn" accept="audio/*" />
     <div class="field" style="margin-top:10px">
       <label for="decPass" class="small">Passphrase (required)</label>
-
-      <input type="password" id="decPass" placeholder="Enter passphrase" autocomplete="current-password" required />
+      <div class="password-field">
+        <input type="password" id="decPass" placeholder="Enter passphrase" autocomplete="current-password" required />
+        <button id="decPassToggle" class="pass-toggle" type="button" aria-controls="decPass" aria-pressed="false" aria-label="Show passphrase">Show</button>
+      </div>
       <div id="decPassFeedback" class="strength-indicator"></div>
-
     </div>
     <div class="row" style="margin-top:12px">
       <button id="btnDecode" class="btn" disabled>Decode</button>
@@ -210,6 +212,31 @@ function updatePassFeedback(inputEl, feedbackEl){
   feedbackEl.innerHTML = `<strong>Strength: ${evaluation.label}</strong>${detail}`;
   feedbackEl.style.color = evaluation.color;
   return evaluation;
+}
+
+function setupPassphraseField(inputEl, feedbackEl, toggleEl, assignEvaluation){
+  if(!inputEl || !feedbackEl || !toggleEl || typeof assignEvaluation !== 'function') return;
+  const syncEvaluation = ()=>{
+    const evaluation = updatePassFeedback(inputEl, feedbackEl);
+    assignEvaluation(evaluation);
+  };
+  inputEl.addEventListener('input', syncEvaluation);
+  inputEl.addEventListener('blur', syncEvaluation);
+  toggleEl.addEventListener('click', ()=>{
+    const willShow = inputEl.type === 'password';
+    inputEl.type = willShow ? 'text' : 'password';
+    toggleEl.textContent = willShow ? 'Hide' : 'Show';
+    toggleEl.setAttribute('aria-pressed', willShow ? 'true' : 'false');
+    toggleEl.setAttribute('aria-label', `${willShow ? 'Hide' : 'Show'} passphrase`);
+    if(typeof inputEl.focus === 'function'){
+      try{ inputEl.focus({preventScroll:true}); }
+      catch{ inputEl.focus(); }
+    }
+  });
+  toggleEl.textContent = 'Show';
+  toggleEl.setAttribute('aria-pressed', 'false');
+  toggleEl.setAttribute('aria-label', 'Show passphrase');
+  syncEvaluation();
 }
 
 // WAV writer (PCM16)
@@ -327,17 +354,27 @@ async function decodeFileToFloat32(file){
 const textIn = document.getElementById('textIn');
 const btnEncode = document.getElementById('btnEncode');
 const encPass = document.getElementById('encPass');
+const encPassFeedback = document.getElementById('encPassFeedback');
+const encPassToggle = document.getElementById('encPassToggle');
 const btnPlay = document.getElementById('btnPlay');
 const player = document.getElementById('player');
 const downloadLink = document.getElementById('downloadLink');
 const shareLink = document.getElementById('shareLink');
 const fileIn = document.getElementById('fileIn');
 const decPass = document.getElementById('decPass');
+const decPassFeedback = document.getElementById('decPassFeedback');
+const decPassToggle = document.getElementById('decPassToggle');
 const btnDecode = document.getElementById('btnDecode');
 const decodedPre = document.getElementById('decoded');
 const modal = document.getElementById('modal');
 const modalMessage = document.getElementById('modalMessage');
 const modalClose = document.getElementById('modalClose');
+
+let encPassEvaluation = evaluatePassphrase(encPass.value || '');
+let decPassEvaluation = evaluatePassphrase(decPass.value || '');
+
+setupPassphraseField(encPass, encPassFeedback, encPassToggle, evaluation=>{ encPassEvaluation = evaluation; });
+setupPassphraseField(decPass, decPassFeedback, decPassToggle, evaluation=>{ decPassEvaluation = evaluation; });
 
 function showModal(message){
   modalMessage.textContent = message;
