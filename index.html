@@ -411,6 +411,29 @@ let currentBlob = null;
 
 const SHARE_MESSAGE = 'Chirp, chirp 🐬 • Decode on Sonar at https://drs-az.github.io/Sonar/';
 
+function resetGeneratedOutput(){
+  if(currentUrl){
+    URL.revokeObjectURL(currentUrl);
+    currentUrl = null;
+  }
+  currentBlob = null;
+  if(btnPlay){
+    btnPlay.disabled = true;
+  }
+  if(player){
+    player.removeAttribute('src');
+    try{ player.load(); }catch(_err){}
+  }
+  if(downloadLink){
+    downloadLink.href = '';
+    downloadLink.style.display = 'none';
+  }
+  if(shareLink){
+    shareLink.style.display = 'none';
+    shareLink.disabled = true;
+  }
+}
+
 function canShareBlob(blob){
   if(!navigator.share) return false;
   if(navigator.canShare){
@@ -428,10 +451,12 @@ btnEncode.addEventListener('click', async ()=>{
   const pass = encPass.value || '';
   encPassEvaluation = updatePassFeedback(encPass, encPassFeedback);
   if(!pass) {
+    resetGeneratedOutput();
     showModal('Passphrase is required to create the WAV.');
     return;
   }
   if(!encPassEvaluation.meetsMin){
+    resetGeneratedOutput();
     const advice = encPassEvaluation.suggestions.join(' ') || 'Try a longer passphrase with more character variety.';
     showModal('Passphrase is too weak. ' + advice);
     return;
@@ -457,9 +482,13 @@ btnEncode.addEventListener('click', async ()=>{
         shareLink.disabled = false;
       }else{
         shareLink.style.display = 'none';
+        shareLink.disabled = true;
       }
     }
-  }catch(e){ showModal('Encode error: ' + (e.message||e)); }
+  }catch(e){
+    resetGeneratedOutput();
+    showModal('Encode error: ' + (e.message||e));
+  }
   finally{ btnEncode.disabled = false; }
 });
 
@@ -493,6 +522,8 @@ if(shareLink){
     }
   });
 }
+
+resetGeneratedOutput();
 
 fileIn.addEventListener('change', ()=>{
   const hasFiles = fileIn.files && fileIn.files.length > 0;
