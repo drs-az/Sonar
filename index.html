@@ -109,7 +109,7 @@
 const SAMPLE_RATE = 44100;
 // Extended charset: A–Z, space, digits 2–7 (Base32 alphabet w/out padding) → total 33 symbols
 const SYMBOLS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ 234567";
-const SYM_TO_IDX = Object.fromEntries([...SYMBOLS].map((c,i)=>[c,i]));
+const SYM_TO_IDX = (()=>{ const map={}; for(let i=0;i<SYMBOLS.length;i++){ map[SYMBOLS[i]] = i; } return map; })();
 const IDX_TO_SYM = [...SYMBOLS];
 const SYMBOL_DURATION = 0.12;   // seconds
 const GAP_DURATION = 0.01;      // seconds
@@ -161,7 +161,7 @@ function concatFloat32(buffers){ const total = buffers.reduce((s,b)=>s+b.length,
 
 // ===== Base32 (RFC 4648, no padding) without regex =====
 const B32_ALPH = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-const B32_MAP = Object.fromEntries([...B32_ALPH].map((c,i)=>[c,i]));
+const B32_MAP = (()=>{ const map={}; for(let i=0;i<B32_ALPH.length;i++){ map[B32_ALPH[i]] = i; } return map; })();
 function base32Encode(buf){
   const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
   let bits=0, value=0, output='';
