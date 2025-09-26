@@ -33,6 +33,12 @@
   .switch{display:inline-flex;align-items:center;gap:8px}
   .switch input{width:18px;height:18px}
   input[type="password"], input[type="text"]{border-radius:12px;border:1px solid var(--line);background:#0d1634;color:#eef2ff;padding:10px 12px;outline:none}
+  .strength-indicator{width:100%;font-size:12px;margin-top:4px;color:var(--muted)}
+  .strength-indicator strong{font-weight:600}
+  input[type="password"].strength-weak{border-color:#ff6b6b;box-shadow:0 0 0 1px #ff6b6b33 inset}
+  input[type="password"].strength-fair{border-color:#f5c542;box-shadow:0 0 0 1px #f5c54233 inset}
+  input[type="password"].strength-strong{border-color:#38d996;box-shadow:0 0 0 1px #38d99633 inset}
+  input[type="password"].strength-excellent{border-color:#38d996;box-shadow:0 0 0 1px #38d99666 inset}
   .modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(5,10,25,0.78);backdrop-filter:blur(6px);z-index:999;padding:20px;animation:fadeIn 0.2s ease-out}
   .modal.hidden{display:none}
   .modal-content{max-width:420px;width:100%;background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 18px 40px #000a;padding:22px;display:flex;flex-direction:column;gap:16px;animation:slideUp 0.25s ease-out}
@@ -67,6 +73,7 @@
     <div class="field" style="margin-top:10px">
       <label for="encPass" class="small">Passphrase (required)</label>
       <input type="password" id="encPass" placeholder="Enter passphrase" autocomplete="new-password" required />
+      <div id="encPassFeedback" class="strength-indicator"></div>
     </div>
     <div class="row" style="margin-top:12px">
       <button id="btnEncode" class="btn">Generate WAV</button>
@@ -87,6 +94,7 @@
     <div class="field" style="margin-top:10px">
       <label for="decPass" class="small">Passphrase (required)</label>
       <input type="password" id="decPass" placeholder="Enter passphrase" autocomplete="current-password" required />
+      <div id="decPassFeedback" class="strength-indicator"></div>
     </div>
     <div class="row" style="margin-top:12px">
       <button id="btnDecode" class="btn" disabled>Decode</button>
@@ -137,6 +145,62 @@ document.getElementById('year').textContent = new Date().getFullYear();
 // ===== Utils =====
 function hann(n){ const w=new Float32Array(n); for(let i=0;i<n;i++){ w[i]=0.5*(1-Math.cos(2*Math.PI*i/(n-1))); } return w; }
 function clamp(v,lo,hi){ return Math.min(hi, Math.max(lo, v)); }
+
+// ===== Passphrase Strength =====
+const MIN_PASS_SCORE = 3; // Fair or better
+const PASS_CLASSES = ['strength-weak','strength-fair','strength-strong','strength-excellent'];
+
+function evaluatePassphrase(pass){
+  if(!pass){
+    return {
+      score: 0,
+      label: 'Required',
+      color: 'var(--muted)',
+      cssClass: '',
+      meetsMin: false,
+      suggestions: ['Enter a passphrase to proceed.']
+    };
+  }
+
+  let score = 0;
+  const suggestions = [];
+  const length = pass.length;
+
+  if(length >= 16) score += 3;
+  else if(length >= 12) score += 2;
+  else if(length >= 8) score += 1;
+  else suggestions.push('Use at least 8 characters.');
+
+  const categories = [/[a-z]/, /[A-Z]/, /[0-9]/, /[^0-9A-Za-z]/].reduce((count, regex)=> count + (regex.test(pass) ? 1 : 0), 0);
+  if(categories >= 4) score += 2;
+  else if(categories >= 3) score += 1;
+  else suggestions.push('Mix upper/lowercase letters, numbers, or symbols.');
+
+  if(/(.)\1{2,}/.test(pass)) suggestions.push('Avoid repeating characters.');
+  else score += 1;
+
+  if(/^[A-Za-z]+$/.test(pass) && length < 14) suggestions.push('Include numbers or symbols for extra entropy.');
+
+  let label='Very weak', color='#ff6b6b', cssClass='strength-weak';
+  if(score >= 6){ label='Excellent'; color='#38d996'; cssClass='strength-excellent'; }
+  else if(score >= 5){ label='Strong'; color='#38d996'; cssClass='strength-strong'; }
+  else if(score >= 3){ label='Fair'; color='#f5c542'; cssClass='strength-fair'; }
+  else if(score >= 2){ label='Weak'; color='#ff9f43'; cssClass='strength-weak'; }
+
+  const meetsMin = score >= MIN_PASS_SCORE;
+  return {score, label, color, cssClass, meetsMin, suggestions};
+}
+
+function updatePassFeedback(inputEl, feedbackEl){
+  const evaluation = evaluatePassphrase(inputEl.value);
+  PASS_CLASSES.forEach(cls=>inputEl.classList.remove(cls));
+  if(evaluation.cssClass) inputEl.classList.add(evaluation.cssClass);
+  const suggestionText = evaluation.suggestions.length ? evaluation.suggestions.join(' ') : (evaluation.label === 'Required' ? '' : 'Looking good.');
+  const detail = suggestionText ? ` – ${suggestionText}` : '';
+  feedbackEl.innerHTML = `<strong>Strength: ${evaluation.label}</strong>${detail}`;
+  feedbackEl.style.color = evaluation.color;
+  return evaluation;
+}
 
 // WAV writer (PCM16)
 function floatTo16BitPCM(float32){
@@ -263,6 +327,14 @@ const decodedPre = document.getElementById('decoded');
 const modal = document.getElementById('modal');
 const modalMessage = document.getElementById('modalMessage');
 const modalClose = document.getElementById('modalClose');
+const encPassFeedback = document.getElementById('encPassFeedback');
+const decPassFeedback = document.getElementById('decPassFeedback');
+
+let encPassEvaluation = updatePassFeedback(encPass, encPassFeedback);
+let decPassEvaluation = updatePassFeedback(decPass, decPassFeedback);
+
+encPass.addEventListener('input', ()=>{ encPassEvaluation = updatePassFeedback(encPass, encPassFeedback); });
+decPass.addEventListener('input', ()=>{ decPassEvaluation = updatePassFeedback(decPass, decPassFeedback); });
 
 function showModal(message){
   modalMessage.textContent = message;
@@ -282,8 +354,14 @@ let currentUrl = null;
 
 btnEncode.addEventListener('click', async ()=>{
   const pass = encPass.value || '';
+  encPassEvaluation = updatePassFeedback(encPass, encPassFeedback);
   if(!pass) {
     showModal('Passphrase is required to create the WAV.');
+    return;
+  }
+  if(!encPassEvaluation.meetsMin){
+    const advice = encPassEvaluation.suggestions.join(' ') || 'Try a longer passphrase with more character variety.';
+    showModal('Passphrase is too weak. ' + advice);
     return;
   }
 
@@ -313,6 +391,7 @@ btnDecode.addEventListener('click', async ()=>{
   btnDecode.disabled = true; decodedPre.textContent='Decoding…';
   try{
     const pass = decPass.value || '';
+    decPassEvaluation = updatePassFeedback(decPass, decPassFeedback);
     if(!pass){ decodedPre.textContent = 'Passphrase is required to decode.'; return; }
     const x = await decodeFileToFloat32(file);
     const txt = decodeAudioToText(x);
