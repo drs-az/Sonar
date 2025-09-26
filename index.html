@@ -337,16 +337,6 @@ const modal = document.getElementById('modal');
 const modalMessage = document.getElementById('modalMessage');
 const modalClose = document.getElementById('modalClose');
 
-const encPassFeedback = document.getElementById('encPassFeedback');
-const decPassFeedback = document.getElementById('decPassFeedback');
-
-let encPassEvaluation = updatePassFeedback(encPass, encPassFeedback);
-let decPassEvaluation = updatePassFeedback(decPass, decPassFeedback);
-
-encPass.addEventListener('input', ()=>{ encPassEvaluation = updatePassFeedback(encPass, encPassFeedback); });
-decPass.addEventListener('input', ()=>{ decPassEvaluation = updatePassFeedback(decPass, decPassFeedback); });
-
-
 function showModal(message){
   modalMessage.textContent = message;
   modal.classList.remove('hidden');
